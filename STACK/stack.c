@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-
+//
 struct stack {
     int *stackArray;
     int currentSize;
