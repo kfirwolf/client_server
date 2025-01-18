@@ -1,84 +1,99 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stdint.h>
 
-//
 struct stack {
-    int *stackArray;
-    int currentSize;
-    int size;
+    uint16_t numOfItems;
+    int stackArray[]; //FAM (c99)
 };
 
-static struct stack myStack;
+struct stack_config {
+    uint16_t size;
+};
 
-int stackInit(int stackSize) {
-    myStack.size = stackSize;
-    myStack.stackArray = (int *)malloc(sizeof(int)*stackSize);
-    if (myStack.stackArray == NULL) {
-        return -1;
+int stack_create(struct stack **st, const struct stack_config *cfg) {
+    
+    if (cfg == NULL || cfg->size == 0) {
+        return -EINVAL;
     }
-    myStack.currentSize = 0;
+
+    if ((st) == NULL) {
+        return -EINVAL;
+    }
+
+    (*st) = malloc(sizeof(struct stack) + sizeof(int)*cfg->size);
+
+    if ( (*st) == NULL) {
+        return -ENOMEM;
+    }
+
+    (*st)->numOfItems = 0;
 
     return 0;
 }
 
-bool stackIsEmpty() {
+static inline bool stackIsEmpty(const struct stack *st) {
 
-    if (myStack.currentSize == 0) {
+    if (st->numOfItems == 0) {
         return true;
     }
 
     return false;
 }
 
-bool stackIsFull() {
+static inline bool stackIsFull(const struct stack *st, const struct stack_config *cfg) {
 
-    if (myStack.currentSize == myStack.size) {
+    if (st->numOfItems == cfg->size) {
         return true;
     }
 
     return false;
 }
 
-int stackPush(int data) {
+int stackPush(struct stack *st, const struct stack_config *cfg, uint16_t data) {
 
-    if (stackIsFull()) {
-        return -1;
+    if (st == NULL) {
+        return -EINVAL;
     }
 
-    if (myStack.stackArray == NULL) {
-        return -1;
+    if (stackIsFull(st, cfg)) {
+        return -EINVAL;
     }
 
-    myStack.stackArray[myStack.currentSize] = data;
-    myStack.currentSize++;
+    st->stackArray[st->numOfItems] = data;
+    st->numOfItems++;
 
     return 0;
 }
 
-int stackPop() {
+int stackPop(struct stack *st, uint16_t *outData) {
 
-    if (stackIsEmpty()) {
-        return -1;
+    if (st == NULL) {
+        return -EINVAL;
     }
 
-    if (myStack.stackArray == NULL) {
-        return -1;
+    if (outData == NULL) {
+        return -EINVAL;
     }
 
-    myStack.currentSize--;
+    if (stackIsEmpty(st)) {
+        return -EINVAL;
+    }
 
-    return myStack.stackArray[myStack.currentSize];
+    st->numOfItems--;
+    (*outData) = st->stackArray[st->numOfItems];
+    return 0;
 }
 
-int stackFree() {
-    if (myStack.stackArray == NULL) {
-        return -1;
+int stackFree(struct stack **st) {
+
+    if (st == NULL || (*st) == NULL) {
+        return -EINVAL;
     }
 
-    free(myStack.stackArray);
-    myStack.stackArray = NULL;
-    myStack.size = 0;
-    myStack.currentSize = 0;
+    free(*st);
+    (*st) = NULL;
     return 0;
 }
