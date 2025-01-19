@@ -7,30 +7,24 @@
 
 struct stack {
     uint16_t num_Of_items;
+    uint16_t size;    
     int stack_array[]; //FAM (c99)
 };
 
-struct stack_config {
-    uint16_t size;
-};
-
-int stack_create(struct stack **st, const struct stack_config *cfg) {
+int stack_create(struct stack **st, uint16_t size) {
     
-    if (cfg == NULL || cfg->size == 0) {
+    if (st == NULL || size == 0) {
         return -EINVAL;
     }
 
-    if (st == NULL) {
-        return -EINVAL;
-    }
-
-    (*st) = malloc(sizeof(struct stack) + sizeof(int)*cfg->size);
+    *st = malloc(sizeof(struct stack) + sizeof(int)*size);
 
     if (*st == NULL) {
         return -ENOMEM;
     }
 
-    memset(*st, 0, sizeof(struct stack) + sizeof(int)*cfg->size); //can also have used calloc instead
+    memset(*st, 0, sizeof(struct stack) + sizeof(int)*size); //can also have used calloc instead
+    (*st)->size = size;
 
     return 0;
 }
@@ -39,17 +33,17 @@ static inline bool stackIsEmpty(const struct stack *st) {
     return !(st->num_Of_items);
 }
 
-static inline bool stackIsFull(const struct stack *st, const struct stack_config *cfg) {
-    return (st->num_Of_items == cfg->size);
+static inline bool stackIsFull(const struct stack *st) {
+    return (st->num_Of_items == st->size);
 }
 
-int stackPush(struct stack *st, const struct stack_config *cfg, uint16_t data) {
+int stackPush(struct stack *st, uint16_t data) {
 
     if (st == NULL) {
         return -EINVAL;
     }
 
-    if (stackIsFull(st, cfg)) {
+    if (stackIsFull(st)) {
         return -EINVAL;
     }
 
