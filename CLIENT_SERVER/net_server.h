@@ -1,5 +1,9 @@
-#include <net_common.h>
+#include <stdint.h>
+#include <string.h>
 
-int serverBind(int socketFD);
-
-int serverRecive();
+int net_server_create();
+int net_server_start();
+int net_server_stop();
+int net_server_destroy();
+int net_server_bind(int socketFD);
+int net_server_unbind(int socketFD);
