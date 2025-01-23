@@ -9,10 +9,14 @@ typedef struct {
 } net_client_cfg;    
 
 typedef struct {
-    uint8_t *data;
-    size_t data_len;
-} net_client_data;   
+    uint8_t *data; // Pointer to the data buffer
+    size_t data_len; // Length of the data
+} net_client_iov; // IO vector
 
+typedef struct {
+    net_client_iov *iov; // Pointer to an array of IO vectors
+    size_t iov_count; // Number of IO vectors
+} net_client_data;
 
 
 int net_client_create(net_client_cfg *cfg, net_client **client);
