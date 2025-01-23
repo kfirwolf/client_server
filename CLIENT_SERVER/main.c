@@ -9,7 +9,7 @@ int main() {
     //creating client:
 
     net_client *client;
-    net_client_cfg cfg;
+    net_client_cfg_t cfg;
     
     cfg.ip = "192.168.1.10";
     cfg.port = 10808;

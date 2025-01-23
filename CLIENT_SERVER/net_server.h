@@ -1,12 +1,10 @@
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 typedef struct net_server net_server; //forward declaration for compilation
 
 typedef struct {
     uint16_t local_port;
-    int time_out;
 } net_server_cfg;
 
 
