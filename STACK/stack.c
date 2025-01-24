@@ -64,7 +64,7 @@ int stackPop(struct stack *st, uint16_t *outData) {
     }
 
     if (stackIsEmpty(st)) {
-        return -EINVAL;
+        return -ENOENT;
     }
 
     st->num_Of_items--;
