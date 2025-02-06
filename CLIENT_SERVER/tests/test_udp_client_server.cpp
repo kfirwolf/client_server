@@ -68,6 +68,6 @@ TEST_F(UDPClientServerTest, SendAndReceiveData) {
     net_infra(test_message, sizeof(test_message));
 
     EXPECT_EQ(received_data, std::vector<uint8_t>(test_message, test_message + sizeof(test_message)));
-    
+
     net_client_destroy(client);
 }
