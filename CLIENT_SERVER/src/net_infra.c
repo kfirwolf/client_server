@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "net_infra.h"
 
-void common_log(log_level_t level, const char *file, int line, const char *func, const char *format, ...) {
+void net_infra_log(log_level_t level, const char *file, int line, const char *func, const char *format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -22,7 +22,7 @@ void common_log(log_level_t level, const char *file, int line, const char *func,
     va_end(args);
 }
 
-void printData(uint8_t *data, size_t length) {
+void net_infra_log_data(uint8_t *data, size_t length) {
     for (size_t i = 0; i < length; i++) {
         printf(" %d ", data[i]);
     }

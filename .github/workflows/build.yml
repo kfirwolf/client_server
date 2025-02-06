@@ -1,0 +1,43 @@
+name: Build Project
+
+on:
+  push:
+    branches:
+      - master_client_server_api_and_impl_testing_ci_cd_gtest
+  pull_request:
+    branches:
+      - master_client_server_api_and_impl_testing_ci_cd_gtest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up dependencies and build GTest
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libgtest-dev
+          
+          # Build GTest libraries (installed as source only)
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          # Copy static libraries from the lib directory
+          sudo cp lib/*.a /usr/lib
+
+
+      - name: Build the project
+        run: |
+          mkdir -p CLIENT_SERVER/build && cd CLIENT_SERVER/build
+          cmake ..
+          make
+          
+      - name: Run gtests
+        run: |
+          cd CLIENT_SERVER/build
+          ./test_udp_client_server
+          ./test_udp_server
+        continue-on-error: false  # Optional: ensures job fails if tests fail
