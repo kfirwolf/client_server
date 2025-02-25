@@ -3,10 +3,10 @@ name: Build Project
 on:
   push:
     branches:
-      - master_impl_mem_mngr_inter
+      - '**'  # This will match all branches
   pull_request:
     branches:
-      - master_impl_mem_mngr_inter
+      - '**'  # This will match all branches
 
 jobs:
   build:

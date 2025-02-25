@@ -4,24 +4,17 @@
 #include <errno.h>
 #include <unistd.h>
 #include "ram_file_ctrl.h"
+#include "common_defs.h"
 
 #define DEFAULT_MAX_FILE_SIZE (10 * 1024 * 1024)  // 10 MB
 #define DEFAULT_MAX_BUFFER_SIZE (1024)            // 1 KB
-#ifndef likely
-#define likely(x)   __builtin_expect(!!(x), 1)
-#endif
-
-#ifndef unlikely
-#define unlikely(x) __builtin_expect(!!(x), 0)
-#endif
-
 
 struct ram_file_t {
     FILE *file;
     char *file_path;
     size_t buffer_size;
     size_t max_file_size;
-    uint8_t delete_files;  
+    bool delete_files;  
 };
 
 static int delete_file_if_exists(const char *file_path) {
@@ -56,16 +49,20 @@ if (cfg == NULL || cfg->file_path == NULL || ram_file_mngr == NULL) {
         return -ENOMEM;//this err because strdup try to alloc mem inside
     }
 
-    mngr->file = fopen(cfg->file_path, "rb+");
-    if (!mngr->file) {
-        // File might not exist, so create it.
+    // first check if file exist
+    if (access(cfg->file_path, F_OK) != 0) {
+        //file is missing , will be created
         mngr->file = fopen(cfg->file_path, "wb+");
-        if (!mngr->file) {
+    }
+    else {
+        mngr->file = fopen(cfg->file_path, "rb+");
+    }
+
+    if (!mngr->file) {
             free(mngr->file_path);
             free(mngr);
             return -EIO;
             // Handle error: unable to open or create file.
-        }
     }
 
     mngr->max_file_size = (cfg->max_file_size == 0 ? DEFAULT_MAX_FILE_SIZE : cfg->max_file_size);
