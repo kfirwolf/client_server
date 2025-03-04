@@ -10,10 +10,10 @@ extern "C" {
 #define NET_INFRA_LOG(level, format, ...) net_infra_log(level, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
 typedef enum {
-    LOG_DEBUG,   // 0
-    LOG_INFO,    // 1
-    LOG_WARNING, // 2
-    LOG_ERROR    // 3
+    LOG_INFO,
+    LOG_WARNING,
+    LOG_DEBUG,
+    LOG_ERROR
 } log_level_t;
 
 void net_infra_log(log_level_t level, const char *file, int line, const char *func, const char *format, ...);

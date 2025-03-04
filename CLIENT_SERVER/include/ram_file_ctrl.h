@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 
 #ifdef __cplusplus
@@ -29,7 +30,7 @@ typedef struct {
     /**
      * @brief delete the saved files when destory function is called
      */
-    uint8_t delete_files;   
+    bool delete_files;   
 } ram_file_cfg_t;
 
 /**
