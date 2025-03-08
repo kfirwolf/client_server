@@ -64,8 +64,8 @@ int net_client_send(net_client_t *client, net_client_data_t *data) {
         return -EINVAL; // Invalid argument
     }
 
-    NET_INFRA_LOG(LOG_DEBUG, "Client sending data:");
-    net_infra_log_data(data->iov->data, data->iov->data_len);
+    //NET_INFRA_LOG(LOG_DEBUG, "Client sending data:");
+    //net_infra_log_data(data->iov->data, data->iov->data_len);
 
     ssize_t sent_bytes = sendto(client->sock_fd, (const void *)(data->iov->data), data->iov->data_len, 0, (const struct sockaddr *)(&client->sock_addr), sizeof(client->sock_addr));
     if (sent_bytes < 0) {

@@ -29,7 +29,6 @@ void net_infra_log(log_level_t level, const char *file, int line, const char *fu
     printf("[%s] [%s:%d - %s] ", level_str, file, line, func);
     vprintf(format, args);
     printf("\n");
-
     va_end(args);
 }
 

@@ -20,10 +20,6 @@ typedef struct {
      */
     const char *file_path;
     /**
-     * @brief Maximum size of the internal buffer.
-     */
-    size_t buffer_size;
-    /**
      * @brief Maximum allowed file size.
      */
     size_t max_file_size;

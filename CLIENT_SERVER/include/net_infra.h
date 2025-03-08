@@ -1,3 +1,7 @@
+#ifndef NET_INFRA_H
+#define NET_INFRA_H
+
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -25,3 +29,5 @@ void net_infra_set_log_level(log_level_t log_level);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // NET_INFRA_H

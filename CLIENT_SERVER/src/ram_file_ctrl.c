@@ -7,12 +7,10 @@
 #include "common_defs.h"
 
 #define DEFAULT_MAX_FILE_SIZE (10 * 1024 * 1024)  // 10 MB
-#define DEFAULT_MAX_BUFFER_SIZE (1024)            // 1 KB
 
 struct ram_file_t {
     FILE *file;
     char *file_path;
-    size_t buffer_size;
     size_t max_file_size;
     bool delete_files;  
 };
@@ -65,8 +63,7 @@ if (cfg == NULL || cfg->file_path == NULL || ram_file_mngr == NULL) {
             // Handle error: unable to open or create file.
     }
 
-    mngr->max_file_size = (cfg->max_file_size == 0 ? DEFAULT_MAX_FILE_SIZE : cfg->max_file_size);
-    mngr->buffer_size   = (cfg->buffer_size == 0 ? DEFAULT_MAX_BUFFER_SIZE : cfg->buffer_size);   
+    mngr->max_file_size = (cfg->max_file_size == 0 ? DEFAULT_MAX_FILE_SIZE : cfg->max_file_size);  
     mngr->delete_files = cfg->delete_files;
 
     (*ram_file_mngr) = mngr;

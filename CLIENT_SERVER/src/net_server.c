@@ -13,7 +13,7 @@
 #include "net_infra.h"
 
 #define SERVER_TIME_OUT_IN_SEC 5
-#define SERVER_BUFFER_SIZE 1024
+#define SERVER_BUFFER_SIZE 10*1024 //(10kb)
 #define SERVER_IP "127.0.0.1"
 
 struct net_server_t {
@@ -102,13 +102,12 @@ static void *_net_server_recv_loop(void *server_data) {
 
     while (get_receive_data_flag(&(server->receive_data_flag))) {
         ssize_t bytes_received = recvfrom(server->sock_fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_len);
-
         if (bytes_received > 0) {
             server->callback(client_addr.sin_addr.s_addr, client_addr.sin_port, buffer, bytes_received, server->user_ctx);
         } else if (bytes_received == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 NET_INFRA_LOG(LOG_INFO, "Receive timed out, continuing loop");
-            } else {
+            } else {       
                 NET_INFRA_LOG(LOG_ERROR, "recvfrom failed: %s", strerror(errno));
                 break;
             }
