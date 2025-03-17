@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,10 +18,6 @@ typedef struct {
      * @brief  Path to the file used as backing store.
      */
     const char *file_path;
-    /**
-     * @brief Maximum size of the internal buffer.
-     */
-    size_t buffer_size;
     /**
      * @brief Maximum allowed file size.
      */
