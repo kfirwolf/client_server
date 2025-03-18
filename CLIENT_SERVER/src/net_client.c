@@ -41,6 +41,7 @@ int net_client_create(net_client_cfg_t *cfg, net_client_t **client) {
         return -EINVAL; // Invalid argument
     }
 
+    NET_INFRA_LOG(LOG_DEBUG, "Successfully created client, ip: %s, port: %d", cfg->server_ip, cfg->server_port);
     return 0;
 }
 
