@@ -31,7 +31,7 @@ typedef struct {
 /**
  * @brief Creating the ram file manager object so it can be used to write or read data
  * @param cfg Configuration data set by the user
- * @param ram_file_mngr Will point to the created ram file manager.
+ * @param ram_file_mngr Will point to the init ram file manager.
  * @return Success (0) or an error code
  */
 int ram_file_create(const ram_file_cfg_t *cfg, ram_file_t **ram_file_mngr);
@@ -63,6 +63,19 @@ int ram_file_read(ram_file_t *ram_file_mngr, size_t offset, uint8_t *data_out, s
  */
 int ram_file_write(ram_file_t *ram_file_mngr, size_t offset, const uint8_t *data, size_t data_size);
 
+/**
+ * @brief Check if file exist
+ * @param file_path path of the file including file name
+ * @return Success (0) or an error code
+ */
+int ram_file_exist(const char *file_path);
+
+/**
+ * @brief return the file size in bytes
+ * @param file_path path of the file including file name
+ * @return size of the file in bytes or an error code
+ */
+ssize_t ram_file_size_in_bytes(const char *file_path);
 
 #ifdef __cplusplus
 }

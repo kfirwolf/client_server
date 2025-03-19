@@ -3,8 +3,11 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "ram_file_ctrl.h"
 #include "common_defs.h"
+#include "net_infra.h"
+
 
 #define DEFAULT_MAX_FILE_SIZE (10 * 1024 * 1024)  // 10 MB
 
@@ -15,16 +18,22 @@ struct ram_file_t {
     bool delete_files;  
 };
 
-static int delete_file_if_exists(const char *file_path) {
+static int check_if_file_exist(const char *file_path) {
     if (file_path == NULL) {
-        return 0;
+        return -EFAULT;
     }
-    // Check if the file exists.
-    if (access(file_path, F_OK) == 0) {
+
+    return (access(file_path, F_OK) == 0) ? 0 : -errno;
+}
+
+static int delete_file_if_exists(const char *file_path) {
+
+    if (check_if_file_exist(file_path) == 0) {
         if (remove(file_path) != 0) {
             return -errno;
         }
     }
+
     return 0;
 }
 
@@ -47,7 +56,7 @@ if (cfg == NULL || cfg->file_path == NULL || ram_file_mngr == NULL) {
     }
 
     // first check if file exist
-    if (access(cfg->file_path, F_OK) != 0) {
+    if (check_if_file_exist(cfg->file_path) != 0) {
         //file is missing , will be created
         mngr->file = fopen(cfg->file_path, "wb+");
     }
@@ -66,6 +75,8 @@ if (cfg == NULL || cfg->file_path == NULL || ram_file_mngr == NULL) {
     mngr->delete_files = cfg->delete_files;
 
     (*ram_file_mngr) = mngr;
+
+    NET_INFRA_LOG(LOG_DEBUG, "Successfully init ram_file, file path: %s", mngr->file_path);
     return 0;
 }
 
@@ -152,4 +163,24 @@ int ram_file_write(ram_file_t *ram_file_mngr, size_t offset, const uint8_t *data
     }
 
     return 0;
+}
+
+int ram_file_exist(const char *file_path) {
+    return check_if_file_exist(file_path);
+}
+
+ssize_t ram_file_size_in_bytes(const char *file_path) {
+
+    int rc = check_if_file_exist(file_path);
+    if (unlikely(rc != 0)) {
+        return rc;
+    }
+    struct stat st;
+
+    // Check if the file exists. If not, print an error and exit.
+    if (stat(file_path, &st) != 0) {
+        return -errno;
+    }
+    
+    return (ssize_t)st.st_size;
 }
