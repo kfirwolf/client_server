@@ -14,10 +14,10 @@ add_library(net_server ${CMAKE_SOURCE_DIR}/src/net_server.c)
 add_library(net_infra ${CMAKE_SOURCE_DIR}/src/net_infra.c)
 add_library(ram_file_ctrl ${CMAKE_SOURCE_DIR}/src/ram_file_ctrl.c)
 
-# Link libraries for net_client and net_server
+# Link libraries for net_client and net_server and ram_file_ctrl
 target_link_libraries(net_client PRIVATE net_infra)
 target_link_libraries(net_server PRIVATE net_infra)
-
+target_link_libraries(ram_file_ctrl PRIVATE net_infra)
 
 # Add test executable
 add_executable(test_udp_client_server ${CMAKE_SOURCE_DIR}/tests/test_udp_client_server.cpp)

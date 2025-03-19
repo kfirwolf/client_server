@@ -86,6 +86,7 @@ int net_server_create(net_server_cfg_t *server_cfg, net_server_t **server) {
         return -errno;
     }
 
+    NET_INFRA_LOG(LOG_INFO, "Successfully created udp server");
     return 0;
 }
 
@@ -131,11 +132,12 @@ int net_server_start(net_server_t *server, net_server_callback_t callback, void 
         cleanup_server(server);
         return -errno;
     }
-
+    NET_INFRA_LOG(LOG_INFO, "Successfully started UDP server");
     return 0;
 }
 
 int net_server_stop(net_server_t *server) {
+    
     if (server == NULL || get_receive_data_flag(&(server->receive_data_flag)) == 0) {
         return -EINVAL;
     }
@@ -143,10 +145,16 @@ int net_server_stop(net_server_t *server) {
     set_receive_data_flag(&(server->receive_data_flag), 0);
     sleep(SERVER_TIME_OUT_IN_SEC);
     pthread_join(server->server_thread, NULL);
-
+    NET_INFRA_LOG(LOG_DEBUG, "Successfully stoping udp server");
     return 0;
 }
 
 int net_server_destroy(net_server_t *server) {
-    return cleanup_server(server);
+    int rc = cleanup_server(server);
+    if (rc != 0) {
+        NET_INFRA_LOG(LOG_ERROR, "Failed net_server_destroy, error: %s", strerror(-rc));        
+    }
+
+    NET_INFRA_LOG(LOG_DEBUG, "Successfully cleanup udp server");
+    return rc;
 }
