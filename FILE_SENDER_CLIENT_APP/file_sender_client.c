@@ -20,7 +20,6 @@ struct file_sender_client {
     net_client_t *net_client;
 };
 
-
 int main(int argc, char *argv[]) {
     int rc;
     ssize_t file_size;

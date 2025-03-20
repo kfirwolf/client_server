@@ -97,7 +97,7 @@ int ram_file_destroy(ram_file_t *ram_file_mngr) {
     }
 
     free(ram_file_mngr);
-
+    NET_INFRA_LOG(LOG_DEBUG, "Successfully cleanup ram_file_ctrl");
     return ret;
 }
 
