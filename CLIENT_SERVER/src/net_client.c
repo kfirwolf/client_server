@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <unistd.h> 
+#include <net_infra.h>
 #include "net_client.h"
+
 
 struct net_client_t {
     struct sockaddr_in sock_addr;

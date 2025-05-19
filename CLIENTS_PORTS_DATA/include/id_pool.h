@@ -12,7 +12,7 @@ typedef struct id_pool_t id_pool_t; //for compilation and proper module design
  */
 
 typedef struct {
-    uint32_t capacity; /**< the total amount of the avilable id's in the pool */
+    size_t capacity; /**< the total amount of the avilable id's in the pool */
     uint32_t id_start_offset; /**< the first id value to start from */
 } id_pool_cfg_t;
 

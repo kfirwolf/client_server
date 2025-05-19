@@ -95,16 +95,13 @@ TEST_F(IdPoolTest, IdPoolDoubleFree) {
 }
 
 // 5. Null-pointer error paths
-TEST_F(IdPoolTest, IdPoolNullCreate) {
-    id_pool_t *p = nullptr;
-    id_pool_cfg_t c{.capacity = 0, .id_start_offset = 0};
-    EXPECT_EQ(id_pool_create(nullptr, &c),     -EINVAL);
-    EXPECT_EQ(id_pool_create(&p,     &c),      -EINVAL);
-}
-
-TEST_F(IdPoolTest, IdPoolNullAllocateAndFree) {
+TEST_F(IdPoolTest, IdPoolNullCreateAllocateAndFree) {
     uint32_t id = -1;
     EXPECT_EQ(id_pool_allocate(nullptr, &id),       -EINVAL);
     EXPECT_EQ(id_pool_free(nullptr, 100),      -EINVAL);
     EXPECT_EQ(id_pool_destroy(nullptr),        -EINVAL);
+    id_pool_t *p = nullptr;
+    id_pool_cfg_t c{.capacity = 0, .id_start_offset = 0};
+    EXPECT_EQ(id_pool_create(nullptr, &c),     -EINVAL);
+    EXPECT_EQ(id_pool_create(&p,     &c),      -EINVAL);
 }

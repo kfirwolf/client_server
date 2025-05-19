@@ -1,49 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 #include "id_pool.h"
-#include "common_defs.h"
+#include <common_defs.h>
+#include <net_infra.h>
 
 
 struct id_pool_t {
-    uint32_t *free_ids;
     uint8_t  *in_use;
-    uint32_t capacity;
-    uint32_t top;
+    size_t capacity;
+    size_t top;
     uint32_t id_start_offset;
+    uint32_t free_ids[];
 };
 
 int id_pool_create(id_pool_t **pool, id_pool_cfg_t *id_pool_cfg) {
 
-    id_pool_t *p;
-
-    if (unlikely(pool == NULL || id_pool_cfg->capacity == 0 )) {
+    if (unlikely(pool == NULL || id_pool_cfg == NULL || id_pool_cfg->capacity == 0)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
         return -EINVAL;
     }
 
-    p = (id_pool_t *)malloc(sizeof(id_pool_t));
+    size_t capacity = id_pool_cfg->capacity;
+    size_t sz_hdr    = sizeof(id_pool_t);
+    size_t sz_free   = capacity * sizeof(uint32_t);
+    size_t sz_inuse  = capacity * sizeof(char);
+    size_t total     = sz_hdr + sz_free + sz_inuse;
+
+    id_pool_t *p = malloc(total);
     if (unlikely(p == NULL)) {
-        return -EINVAL;
+        NET_INFRA_LOG(LOG_ERROR, "Memory allocation failed");
+        return -ENOMEM;
     }
 
-    p->capacity = id_pool_cfg->capacity;
-    p->top = id_pool_cfg->capacity;
+    uint8_t *base      = (uint8_t *)p;
+    p->in_use       = base + sz_hdr + sz_free;
+    /* free_ids already refers to base + sz_hdr */
+    
+    p->capacity = capacity;
+    p->top = capacity;
     p->id_start_offset = id_pool_cfg->id_start_offset;
-    p->free_ids = malloc(sizeof(uint32_t)*p->capacity);
-    if (unlikely(p->free_ids == NULL)) {
-        free(p);
-        return -EINVAL;
-    }
-
-    p->in_use = calloc(p->capacity, sizeof(uint8_t));
-    if (unlikely(p->in_use == NULL)) {
-        free(p->free_ids);
-        free(p);
-        return -EINVAL;
-    }
-
+    
+    // clear flags
+    memset(p->in_use, 0, sz_inuse);
+ 
+    // init free_id array
     for (size_t i = 0; i < p->capacity; i++) {
-        p->free_ids[i] = p->capacity + p->id_start_offset -i -1;
+        p->free_ids[i] = p->id_start_offset + (capacity - 1 - i);
     }
 
     *pool = p;
@@ -54,10 +58,12 @@ int id_pool_create(id_pool_t **pool, id_pool_cfg_t *id_pool_cfg) {
 int id_pool_allocate(id_pool_t *pool, uint32_t *out_id) {
 
     if (unlikely(pool == NULL)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
         return -EINVAL;
     }
 
     if (pool->top == 0) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is empty");
         return -ENOENT;
     }
 
@@ -70,6 +76,7 @@ int id_pool_allocate(id_pool_t *pool, uint32_t *out_id) {
 int id_pool_free(id_pool_t *pool, uint32_t id) {
 
     if (unlikely(pool == NULL)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
         return -EINVAL;
     }
 
@@ -77,6 +84,7 @@ int id_pool_free(id_pool_t *pool, uint32_t id) {
 
     //illegal id
     if (unlikely((id > pool->capacity + pool->id_start_offset) || (id < pool->id_start_offset))) {
+        NET_INFRA_LOG(LOG_ERROR, "pool illegal id");
         return -ESPIPE;
     }
 
@@ -95,11 +103,10 @@ int id_pool_free(id_pool_t *pool, uint32_t id) {
 int id_pool_destroy(id_pool_t *pool) {
 
     if (unlikely(pool == NULL || pool->free_ids == NULL)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
         return -EINVAL;
     }
 
-    free(pool->free_ids);
-    free(pool->in_use);
     free(pool);
 
     return 0;

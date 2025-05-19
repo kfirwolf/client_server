@@ -6,9 +6,9 @@
 #include <signal.h>
 #include "net_server.h"
 #include "ram_file_ctrl.h"
-#include "net_infra.h"
+#include <net_infra.h>
 #include "file_transfer_protocol.h"
-#include "common_defs.h"
+#include <common_defs.h>
 
 #define MAX_FILE_SIZE (1 * 1024 * 1024)  // 1 MB
 #define MAX_FILE_BUFFER_SIZE 1024 //1 KB

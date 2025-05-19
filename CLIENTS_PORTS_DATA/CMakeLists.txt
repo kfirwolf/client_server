@@ -5,6 +5,9 @@ project(IdPoolProject C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# make <common_defs.h> visible to *all* targets in this directory
+include_directories(${PROJECT_SOURCE_DIR}/../include)
+
 # Add your id_pool library (C)
 add_library(id_pool STATIC
     src/id_pool.c
@@ -12,6 +15,7 @@ add_library(id_pool STATIC
 
 target_include_directories(id_pool PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+    ${COMMON_INCLUDE_DIR}            # <-- so id_pool can #include <common_defs.h>
 )
 
 # GoogleTest integration
@@ -25,6 +29,7 @@ add_executable(id_pool_test
 
 target_include_directories(id_pool_test PRIVATE
     ${PROJECT_SOURCE_DIR}/include
+    ${COMMON_INCLUDE_DIR}             # <-- so tests can #include <common_defs.h>
 )
 
 # Link test executable with id_pool, GTest main (which provides main), and pthread

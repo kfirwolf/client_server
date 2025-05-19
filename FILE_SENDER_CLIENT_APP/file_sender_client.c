@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include "net_client.h"
 #include "ram_file_ctrl.h"
-#include "net_infra.h"
+#include <net_infra.h>
 #include "file_transfer_protocol.h"
-#include "common_defs.h"
+#include <common_defs.h>
 
 #define MAX_FILE_CHUNK_SIZE (1024) // 1 KB
 #define SERVER_IP       "127.0.0.1"

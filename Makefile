@@ -29,7 +29,7 @@ CC = gcc
 MYLIB_INCLUDE_DIR := ./mylib/include
 CLIENT_HEADERS := $(wildcard ./CLIENT_SERVER/include/*.h)
 
-CFLAGS = -Wall -fPIC -I$(MYLIB_INCLUDE_DIR) -I./FILE_TRANSFER_INFRA/
+CFLAGS = -Wall -fPIC -I$(MYLIB_INCLUDE_DIR) -I./FILE_TRANSFER_INFRA/ -I./include
 LDFLAGS = -L./mylib -Wl,-rpath=\$$ORIGIN/../mylib
 LIBS = -lfile_transfer_infra
 
