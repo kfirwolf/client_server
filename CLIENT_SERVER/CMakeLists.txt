@@ -6,7 +6,7 @@ enable_testing()
 
 # Find Google Test
 find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/include)
+include_directories(${GTEST_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/../include)
 
 # Add the networking library sources
 add_library(net_client ${CMAKE_SOURCE_DIR}/src/net_client.c)

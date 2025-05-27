@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "net_infra.h"
+#include <net_infra.h>
 
 #ifdef __cplusplus
 extern "C" {
