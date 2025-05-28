@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include "net_server.h"
-#include "net_client.h"
 #include <atomic>
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include "net_server.h"
+#include "net_client.h"
 
 // Global variables for test validation
 std::atomic<bool> data_received(false);

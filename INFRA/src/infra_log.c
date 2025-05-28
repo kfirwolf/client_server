@@ -1,6 +1,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
-#include <net_infra.h>
+#include <infra_log.h>
 
 static log_level_t current_log_level = LOG_DEBUG;
 

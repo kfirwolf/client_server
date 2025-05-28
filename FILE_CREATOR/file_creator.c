@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdint.h>
-#include <net_infra.h>
+#include <infra_log.h>
 
 #define FILE_BUFFER_SIZE (1024) // 1 KB
 
