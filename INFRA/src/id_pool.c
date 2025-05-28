@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include "id_pool.h"
 #include <common_defs.h>
-#include <net_infra.h>
+#include <infra_log.h>
+#include "id_pool.h"
 
 
 struct id_pool_t {

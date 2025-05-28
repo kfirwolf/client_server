@@ -6,7 +6,7 @@
 #include <signal.h>
 #include "net_server.h"
 #include "ram_file_ctrl.h"
-#include <net_infra.h>
+#include <infra_log.h>
 #include "file_transfer_protocol.h"
 #include <common_defs.h>
 

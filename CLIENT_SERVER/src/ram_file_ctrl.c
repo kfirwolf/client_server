@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include "ram_file_ctrl.h"
 #include <common_defs.h>
-#include <net_infra.h>
+#include <infra_log.h>
 
 
 #define DEFAULT_MAX_FILE_SIZE (10 * 1024 * 1024)  // 10 MB

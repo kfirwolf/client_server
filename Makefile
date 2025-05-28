@@ -28,6 +28,7 @@ CC = gcc
 
 MYLIB_INCLUDE_DIR := ./mylib/include
 CLIENT_HEADERS := $(wildcard ./CLIENT_SERVER/include/*.h)
+INFRA_HEADERS := $(wildcard ./INFRA/include/*.h)
 
 CFLAGS = -Wall -fPIC -I$(MYLIB_INCLUDE_DIR) -I./FILE_TRANSFER_INFRA/ -I./include
 LDFLAGS = -L./mylib -Wl,-rpath=\$$ORIGIN/../mylib
@@ -41,7 +42,10 @@ BINDIR := bin
 LIB_TYPE ?= dynamic
 
 SRCFILES = ./CLIENT_SERVER/src
-SRC = $(SRCFILES)/net_client.c $(SRCFILES)/net_server.c $(SRCFILES)/net_infra.c $(SRCFILES)/ram_file_ctrl.c
+INFRAFILES = ./INFRA/src
+# SRC = $(INFRAFILES)/infra_log.c $(SRCFILES)/net_client.c $(SRCFILES)/net_server.c  $(SRCFILES)/ram_file_ctrl.c
+SRC := $(wildcard $(INFRAFILES)/*.c $(SRCFILES)/*.c)
+
 OBJ = $(SRC:.c=.o)
 
 SO_NAME = ./mylib/libfile_transfer_infra.so
@@ -54,6 +58,7 @@ USERAPPFILEPATH ?=
 headers:
 	@mkdir -p $(MYLIB_INCLUDE_DIR)
 	cp $(CLIENT_HEADERS) $(MYLIB_INCLUDE_DIR)
+	cp $(INFRA_HEADERS) $(MYLIB_INCLUDE_DIR)
 
 	
 # Set library variables based on chosen type

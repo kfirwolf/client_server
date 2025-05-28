@@ -1,12 +1,10 @@
-name: Build Project
+name: Build and Test Project
 
 on:
   push:
-    branches:
-      - '**'  # This will match all branches
+    branches: ['**']
   pull_request:
-    branches:
-      - '**'  # This will match all branches
+    branches: ['**']
 
 jobs:
   build:
@@ -16,29 +14,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Set up dependencies and build GTest
+      - name: Install dependencies and build GTest
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libgtest-dev
-          
-          # Build GTest libraries (installed as source only)
           cd /usr/src/gtest
           sudo cmake .
           sudo make
-          # Copy static libraries from the lib directory
           sudo cp lib/*.a /usr/lib
 
+      - name: Build the core library with Makefile
+        run: |
+          make
 
-      - name: Build the project
+      - name: Build and run CLIENT_SERVER tests
         run: |
           mkdir -p CLIENT_SERVER/build && cd CLIENT_SERVER/build
           cmake ..
           make
-          
-      - name: Run gtests
+          ctest --output-on-failure
+
+      - name: Build and run INFRA tests
         run: |
-          cd CLIENT_SERVER/build
-          ./test_udp_client_server
-          ./test_udp_server
-          ./test_ram_file_ctrl
-        continue-on-error: false  # Optional: ensures job fails if tests fail
+          mkdir -p INFRA/build && cd INFRA/build
+          cmake ..
+          make
+          ctest --output-on-failure
