@@ -9,8 +9,8 @@
 
 struct id_pool_t {
     uint8_t  *in_use;
-    size_t capacity;
-    size_t top;
+    uint32_t capacity;
+    uint32_t top;
     uint32_t id_start_offset;
     uint32_t free_ids[];
 };
@@ -22,11 +22,11 @@ int id_pool_create(id_pool_t **pool, id_pool_cfg_t *id_pool_cfg) {
         return -EINVAL;
     }
 
-    size_t capacity = id_pool_cfg->capacity;
-    size_t sz_hdr    = sizeof(id_pool_t);
-    size_t sz_free   = capacity * sizeof(uint32_t);
-    size_t sz_inuse  = capacity * sizeof(char);
-    size_t total     = sz_hdr + sz_free + sz_inuse;
+    uint32_t capacity = id_pool_cfg->capacity;
+    uint32_t sz_hdr    = sizeof(id_pool_t);
+    uint32_t sz_free   = capacity * sizeof(uint32_t);
+    uint32_t sz_inuse  = capacity * sizeof(char);
+    uint32_t total     = sz_hdr + sz_free + sz_inuse;
 
     id_pool_t *p = malloc(total);
     if (unlikely(p == NULL)) {
@@ -34,8 +34,8 @@ int id_pool_create(id_pool_t **pool, id_pool_cfg_t *id_pool_cfg) {
         return -ENOMEM;
     }
 
-    uint8_t *base      = (uint8_t *)p;
-    p->in_use       = base + sz_hdr + sz_free;
+    uint8_t *base = (uint8_t *)p;
+    p->in_use = base + sz_hdr + sz_free;
     /* free_ids already refers to base + sz_hdr */
     
     p->capacity = capacity;
@@ -109,5 +109,23 @@ int id_pool_destroy(id_pool_t *pool) {
 
     free(pool);
 
+    return 0;
+}
+
+int id_pool_get_used_id_count(id_pool_t *pool, uint32_t *id_count) {
+
+    if (unlikely(pool == NULL || pool->free_ids == NULL)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
+        return -EINVAL;
+    }
+
+    int count = pool->capacity - pool->top;
+
+    if (count < 0) {
+        NET_INFRA_LOG(LOG_ERROR, "ilegal top value");
+        return -EINVAL;
+    }
+    
+    *id_count = count;
     return 0;
 }
