@@ -17,8 +17,18 @@ struct id_pool_t {
 
 int id_pool_create(id_pool_t **pool, id_pool_cfg_t *id_pool_cfg) {
 
-    if (unlikely(pool == NULL || id_pool_cfg == NULL || id_pool_cfg->capacity == 0)) {
+    if (unlikely(pool == NULL)) {
         NET_INFRA_LOG(LOG_ERROR, "pool is not initialized");
+        return -EINVAL;
+    }
+
+    if (unlikely(id_pool_cfg == NULL)) {
+        NET_INFRA_LOG(LOG_ERROR, "pool cfg is not initialized");
+        return -EINVAL;
+    }
+
+    if (unlikely(id_pool_cfg->capacity == 0)) {
+        NET_INFRA_LOG(LOG_ERROR, "capacity == 0");
         return -EINVAL;
     }
 
