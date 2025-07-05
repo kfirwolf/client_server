@@ -27,7 +27,7 @@ help:
 CC = gcc
 
 MYLIB_INCLUDE_DIR := ./mylib/include
-CLIENT_HEADERS := $(wildcard ./CLIENT_SERVER/include/*.h) $(wildcard ./CLIENTS_MANAGER/include/*.h)
+CLIENT_HEADERS := $(wildcard ./CLIENT_SERVER/include/*.h) $(wildcard ./CLIENTS_MANAGER/include/*.h) $(wildcard ./BUDDY_ALLOCATOR/include/*.h)
 INFRA_HEADERS := $(wildcard ./INFRA/include/*.h)
 
 CFLAGS = -Wall -fPIC -I$(MYLIB_INCLUDE_DIR) -I./FILE_TRANSFER_INFRA/ -I./include
@@ -42,7 +42,7 @@ BINDIR := bin
 LIB_TYPE ?= dynamic
 
 
-ALL_DIRS := ./INFRA/src ./CLIENT_SERVER/src ./CLIENTS_MANAGER/src
+ALL_DIRS := ./INFRA/src ./CLIENT_SERVER/src ./CLIENTS_MANAGER/src ./BUDDY_ALLOCATOR/src
 SRC := $(foreach dir,$(ALL_DIRS),$(wildcard $(dir)/*.c))
 
 OBJ = $(SRC:.c=.o)
