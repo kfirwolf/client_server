@@ -93,7 +93,7 @@ int id_pool_free(id_pool_t *pool, uint32_t id) {
     uint32_t idx = id - pool->id_start_offset;
 
     //illegal id
-    if (unlikely((id > pool->capacity + pool->id_start_offset) || (id < pool->id_start_offset))) {
+    if (unlikely((id >= pool->capacity + pool->id_start_offset) || (id < pool->id_start_offset))) {
         NET_INFRA_LOG(LOG_ERROR, "pool illegal id");
         return -ESPIPE;
     }

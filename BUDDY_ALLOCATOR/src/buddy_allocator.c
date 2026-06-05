@@ -17,7 +17,6 @@
 
 #define MAX_LEVELS 64
 
-
 typedef struct {
     id_pool_t *id_pool;
     void *elements_array;
@@ -25,29 +24,23 @@ typedef struct {
     uint32_t size_of_element;
 } mem_pool_t;
 
-
 typedef struct {
     uint32_t element_size; 
     uint32_t num_elements;
 } mem_pool_cfg_t;
 
-int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg);
-int mem_pool_allocate(mem_pool_t *pool, void **ptr);
-int mem_pool_free(mem_pool_t *pool, void *ptr);
-int mem_pool_destroy(mem_pool_t *pool);
-
-struct block {
-    struct block *next;
+struct buddy_alloc_block {
+    struct buddy_alloc_block *next;
     uint32_t offset;
     uint32_t level : 6; //Instead of size will use level instead (we allocated only 6 bits for level and the rest will go to the new index we wanted to add will be what left)
     uint32_t block_id : 26;
 };
 
 struct buddy_free_list {
-    struct block *head;
+    struct buddy_alloc_block *head;
 };
 
-struct buddy_allocator {
+struct buddy_alloc {
     uint32_t min_block_size; 
     uint32_t num_of_levels;
     mem_pool_t *mem_pool;
@@ -105,7 +98,7 @@ static inline int calc_max_nodes(uint32_t num_of_levels, uint32_t *max_total_nod
     return 0;   
 }
 
-static int get_block_level(const buddy_allocator_t *b_alloc, uint32_t block_size, uint32_t *level_out)
+static int get_block_level(const buddy_alloc_t *b_alloc, uint32_t block_size, uint32_t *level_out)
 {
     if (b_alloc == NULL || level_out == NULL) {
         return -EINVAL;
@@ -170,7 +163,6 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
     //setting id pool
     cfg.capacity = (*pool)->num_of_elements;
     cfg.id_start_offset = 0;
-
 
     rc = id_pool_create(&((*pool)->id_pool), &cfg);
 
@@ -252,9 +244,9 @@ int mem_pool_free(mem_pool_t *pool, void *ptr) {
 
 //////////////////////////////// INTERNAL LINKED LIST API //////////////////////////////////////////////////////////////
 
-static int create_new_block(buddy_allocator_t *b_alloc, uint32_t level, uint32_t offset, struct block **out_block) {
+static int create_new_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t offset, struct buddy_alloc_block **out_block) {
     int rc = 0;
-    struct block *free_block;
+    struct buddy_alloc_block *free_block;
 
     if (out_block == NULL) {
         return -EINVAL;
@@ -273,7 +265,7 @@ static int create_new_block(buddy_allocator_t *b_alloc, uint32_t level, uint32_t
     return 0;
 }
 
-static int linked_list_add_block_as_head(buddy_allocator_t *b_alloc, struct block *input_block) {
+static int linked_list_add_block(buddy_alloc_t *b_alloc, struct buddy_alloc_block *input_block) {
 
     if (unlikely(input_block == NULL)) {
         NET_INFRA_LOG(LOG_ERROR, "Failed to add block to free list");
@@ -286,11 +278,11 @@ static int linked_list_add_block_as_head(buddy_allocator_t *b_alloc, struct bloc
     return 0;
 }
 
-static int linked_list_extract_block_by_offset(buddy_allocator_t *b_alloc, uint32_t level, uint32_t offset, bool remove_from_mem_pool, bool *block_exist) {
+static int linked_list_extract_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t offset, bool remove_from_mem_pool, bool *block_exist) {
 
     int rc = 0;
-    struct block *block_to_remove = NULL;
-    struct block *current_block = NULL;
+    struct buddy_alloc_block *block_to_remove = NULL;
+    struct buddy_alloc_block *current_block = NULL;
 
     if (unlikely(level >= b_alloc->num_of_levels)) {
         NET_INFRA_LOG(LOG_ERROR, "Invalid level: %u", level);
@@ -345,7 +337,7 @@ static int linked_list_extract_block_by_offset(buddy_allocator_t *b_alloc, uint3
 
 //////////////////////////////// INTERNAL BUDDY ALLOCATOR API //////////////////////////////////////////////////////////
 
-static int merge_with_buddy(buddy_allocator_t *b_alloc, int *level, uint32_t *block_offset, uint32_t *block_size, bool *found_buddy) {
+static int merge_with_buddy(buddy_alloc_t *b_alloc, int *level, uint32_t *block_offset, uint32_t *block_size, bool *found_buddy) {
     int rc = 0;
     *found_buddy = false;
     uint32_t buddy_offset = get_buddy_offset(*block_offset, *block_size);
@@ -356,7 +348,7 @@ static int merge_with_buddy(buddy_allocator_t *b_alloc, int *level, uint32_t *bl
         return 0;
     }
 
-    rc = linked_list_extract_block_by_offset(b_alloc, *level, buddy_offset, true, &buddy_exist);
+    rc = linked_list_extract_block(b_alloc, *level, buddy_offset, true, &buddy_exist);
     if (rc != 0) {
         return rc;
     }
@@ -374,39 +366,36 @@ static int merge_with_buddy(buddy_allocator_t *b_alloc, int *level, uint32_t *bl
     return 0;
 }
 
-static int try_allocate_at_level(buddy_allocator_t *b_alloc, uint32_t level, struct block **block_out, bool *found_block) {
-
+static int allocate_at_level(buddy_alloc_t *b_alloc, uint32_t level, struct buddy_alloc_block **block_out, bool *found_block) {
 
     int rc = 0;
-    struct block* target_block = NULL;
-    target_block = b_alloc->free_list[level].head;
+    struct buddy_alloc_block* target_block = NULL;
     
     if (block_out == NULL) {
         return -EINVAL;
     }
 
+    target_block = b_alloc->free_list[level].head;
     if (target_block == NULL) {
         *found_block = false;
         return 0;
     }
 
     //remove block from free list (not from mem pool)
-    rc = linked_list_extract_block_by_offset(b_alloc, level, target_block->offset, false, NULL);
+    rc = linked_list_extract_block(b_alloc, level, target_block->offset, false, NULL);
     if (unlikely(rc != 0)) {
         return rc;            
     }
 
-    *found_block = true;
-
-    //passed block pointer to output
+    *found_block = true; //passed block pointer to output
     *block_out = target_block;
-
     return 0;
 }
 
-static inline int find_non_empty_level(buddy_allocator_t *b_alloc, uint32_t start_level, uint32_t *found_level) {
+static inline int find_non_empty_level(buddy_alloc_t *b_alloc, uint32_t start_level, uint32_t *found_level) {
     uint32_t level = start_level;
 
+    //search for non empty level worst case of O(num_of_levels) but in practice will be much less since we will find free blocks in the upper levels (larger blocks) and split them to the target level (smaller blocks)
     while (level > 0 && b_alloc->free_list[level].head == NULL) {
         level--;
     }
@@ -420,10 +409,10 @@ static inline int find_non_empty_level(buddy_allocator_t *b_alloc, uint32_t star
     return 0;
 }
 
-static int split_block_down(buddy_allocator_t *b_alloc, uint32_t src_level, uint32_t target_level, struct block **target_blk) {
+static int split_block_down(buddy_alloc_t *b_alloc, uint32_t src_level, uint32_t target_level, struct buddy_alloc_block **target_blk) {
     int rc = 0;
-    struct block *start_block;
-    struct block *buddy = NULL;
+    struct buddy_alloc_block *start_block;
+    struct buddy_alloc_block *buddy = NULL;
     uint32_t blk_offset;
     uint32_t buddy_offset;
     uint32_t b_size;
@@ -447,11 +436,12 @@ static int split_block_down(buddy_allocator_t *b_alloc, uint32_t src_level, uint
     blk_offset = start_block->offset;    
 
     // remove the src block (we only remove from the free list , but keep the block object start_block and not returnning it to the mem pool, we will use the same block for the target block at the end)
-    rc = linked_list_extract_block_by_offset(b_alloc, src_level, blk_offset, false, NULL);
+    rc = linked_list_extract_block(b_alloc, src_level, blk_offset, false, NULL);
     if (unlikely(rc != 0)) {
         return rc;
     }
 
+    // time complexity: o(target_level - src_level) worst case o(num_of_levels), we split block recursively until we get to the target level, in each split we create a buddy block and add it to the free list
     for (uint32_t lev = src_level + 1; lev <= target_level; ++lev) {
 
         //creating a buddy block for each level
@@ -462,7 +452,7 @@ static int split_block_down(buddy_allocator_t *b_alloc, uint32_t src_level, uint
             return rc;
         }
 
-        rc = linked_list_add_block_as_head(b_alloc, buddy);
+        rc = linked_list_add_block(b_alloc, buddy);
         if (rc != 0) {
             return rc;
         }
@@ -479,11 +469,11 @@ static int split_block_down(buddy_allocator_t *b_alloc, uint32_t src_level, uint
 
 //////////////////////////////// EXTERNAL BUDDY ALLOCATOR API //////////////////////////////////////////////////////////
 
-int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_allocator_t **b_alloc) {
+int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_alloc_t **b_alloc) {
     int rc = 0;
-    buddy_allocator_t *b_allocator = NULL;
+    buddy_alloc_t *b_allocator = NULL;
     mem_pool_cfg_t mem_pool_cfg;
-    struct block *blk;
+    struct buddy_alloc_block *blk;
 
 
     if (unlikely(b_alloc == NULL || b_cfg == NULL)) {
@@ -528,10 +518,10 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_allocator_t **b_alloc) {
     }
 
     //calc allocation sizes
-    const uint32_t base_size = sizeof(buddy_allocator_t);
+    const uint32_t base_size = sizeof(buddy_alloc_t);
     const uint32_t free_list_size = num_of_levels * sizeof(struct buddy_free_list);
-
     const size_t total_size = base_size + free_list_size;
+    
     b_allocator = calloc(1, total_size);
 
     if (unlikely(b_allocator == NULL)) {
@@ -542,7 +532,7 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_allocator_t **b_alloc) {
 
     //setting and creating mem pool
     mem_pool_cfg.num_elements = max_nodes;
-    mem_pool_cfg.element_size = sizeof(struct block);
+    mem_pool_cfg.element_size = sizeof(struct buddy_alloc_block);
 
     rc = mem_pool_create(&b_allocator->mem_pool, &mem_pool_cfg);
     if (unlikely(rc != 0)) {
@@ -559,7 +549,7 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_allocator_t **b_alloc) {
         goto fail;
     }
     
-    rc = linked_list_add_block_as_head(b_allocator, blk);
+    rc = linked_list_add_block(b_allocator, blk);
     if (unlikely(rc != 0)) {
         goto fail;
     }    
@@ -577,7 +567,7 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_allocator_t **b_alloc) {
         return rc;    
 }
 
-int buddy_alloc_destroy(buddy_allocator_t *b_alloc) {
+int buddy_alloc_destroy(buddy_alloc_t *b_alloc) {
 
     int rc = 0;
     if (unlikely(b_alloc == NULL)) {
@@ -600,11 +590,11 @@ int buddy_alloc_destroy(buddy_allocator_t *b_alloc) {
     return 0;
 }
 
-int buddy_alloc_allocate(buddy_allocator_t *b_alloc, uint32_t block_size, struct block **block_out) {
+int buddy_alloc_allocate(buddy_alloc_t *b_alloc, uint32_t block_size, struct buddy_alloc_block **block_out) {
     int rc;
     uint32_t original_block_level, level, split_size;
     split_size = block_size;
-    struct block *req_block;
+    struct buddy_alloc_block *req_block;
 
     if (unlikely(b_alloc == NULL || block_out == NULL)) {
         NET_INFRA_LOG(LOG_ERROR, "NULL input args");
@@ -626,7 +616,7 @@ int buddy_alloc_allocate(buddy_allocator_t *b_alloc, uint32_t block_size, struct
 
     level = original_block_level;
     bool found_block;
-    rc = try_allocate_at_level(b_alloc, level, &req_block, &found_block); //update the inner func that this func uses to not remove the mem block from the mem pool when allocate the block
+    rc = allocate_at_level(b_alloc, level, &req_block, &found_block); //update the inner func that this func uses to not remove the mem block from the mem pool when allocate the block
     if ( rc!= 0) {
         return rc;
     }
@@ -637,7 +627,7 @@ int buddy_alloc_allocate(buddy_allocator_t *b_alloc, uint32_t block_size, struct
         return 0;
     }
 
-    //update level parameter to the non empty level
+    //update level parameter to the non empty level (search inside the linked list for non empty level starting from the target level and up to the larger blocks levels)
     rc = find_non_empty_level(b_alloc, level, &level);
 
     if ( rc!= 0) {
@@ -668,7 +658,7 @@ int buddy_alloc_allocate(buddy_allocator_t *b_alloc, uint32_t block_size, struct
     */
 }
 
-int buddy_alloc_free(buddy_allocator_t *b_alloc, struct block *block) {
+int buddy_alloc_free(buddy_alloc_t *b_alloc, struct buddy_alloc_block *block) {
 
     int rc;
     uint32_t block_size, buddy_offset, block_offset; 
@@ -706,7 +696,7 @@ int buddy_alloc_free(buddy_allocator_t *b_alloc, struct block *block) {
 
     block->level = current_block_level;
     block->offset = block_offset;
-    rc = linked_list_add_block_as_head(b_alloc, block);
+    rc = linked_list_add_block(b_alloc, block);
     if (unlikely(rc != 0)) {
         return rc;
     }
@@ -715,7 +705,7 @@ int buddy_alloc_free(buddy_allocator_t *b_alloc, struct block *block) {
     return 0;
 }
 
-int buddy_alloc_get_num_of_levels(const buddy_allocator_t *b_alloc, uint32_t *num_of_levels) {
+int buddy_alloc_get_num_of_levels(const buddy_alloc_t *b_alloc, uint32_t *num_of_levels) {
 
     if (unlikely(b_alloc == NULL || num_of_levels == NULL)) {
         NET_INFRA_LOG(LOG_ERROR, "NULL input args");
@@ -727,7 +717,7 @@ int buddy_alloc_get_num_of_levels(const buddy_allocator_t *b_alloc, uint32_t *nu
     return 0;
 }
 
-int buddy_alloc_count_free_blocks(const buddy_allocator_t *b_alloc, uint32_t level, uint32_t *free_blocks_num) {
+int buddy_alloc_count_free_blocks(const buddy_alloc_t *b_alloc, uint32_t level, uint32_t *free_blocks_num) {
 
     int count = 0;
 
@@ -736,7 +726,7 @@ int buddy_alloc_count_free_blocks(const buddy_allocator_t *b_alloc, uint32_t lev
         return -EINVAL;
     }
     
-    struct block *cur = b_alloc->free_list[level].head;
+    struct buddy_alloc_block *cur = b_alloc->free_list[level].head;
     while (cur) {
         ++count;
         cur = cur->next;
@@ -746,7 +736,7 @@ int buddy_alloc_count_free_blocks(const buddy_allocator_t *b_alloc, uint32_t lev
     return 0;
 }
 
-int buddy_alloc_get_block_level(const struct block *blk, uint32_t *blk_level) {
+int buddy_alloc_get_block_level(const struct buddy_alloc_block *blk, uint32_t *blk_level) {
 
     if (blk == NULL || blk_level == NULL) {
         NET_INFRA_LOG(LOG_ERROR, "NULL input args");
@@ -757,7 +747,7 @@ int buddy_alloc_get_block_level(const struct block *blk, uint32_t *blk_level) {
     return 0;
 }
 
-int buddy_alloc_get_block_offset(const struct block *blk, uint32_t *blk_offset) {
+int buddy_alloc_get_block_offset(const struct buddy_alloc_block *blk, uint32_t *blk_offset) {
 
     if (blk == NULL || blk_offset == NULL) {
         NET_INFRA_LOG(LOG_ERROR, "NULL input args");

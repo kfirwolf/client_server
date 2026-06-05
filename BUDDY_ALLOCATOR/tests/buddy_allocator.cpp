@@ -8,7 +8,7 @@
 
 class buddy_allocator_test : public ::testing::Test {
 protected:
-    buddy_allocator_t *b_alloc = nullptr;
+    buddy_alloc_t *b_alloc = nullptr;
     void SetUp() override {
         buddy_alloc_cfg_t b_alloc_cfg;
         b_alloc_cfg.min_block_size = 512;
@@ -22,7 +22,7 @@ protected:
 };
 
 TEST(buddy_allocator_create_destroy_test, create_destroy) {
-    buddy_allocator_t *alloc = nullptr;
+    buddy_alloc_t *alloc = nullptr;
     buddy_alloc_cfg_t cfg;
     cfg.min_block_size = KB_TO_BYTES(4);
     cfg.total_mem_pool_size = MB_TO_BYTES(2);
@@ -78,11 +78,11 @@ TEST_F(buddy_allocator_test, initial_free_list) {
 TEST_F(buddy_allocator_test, alloc_free_sanity) {
 
     uint32_t block_size1 = KB_TO_BYTES(1);
-    block_t *out_block1;
+    buddy_alloc_block_t *out_block1;
     std:: cout << "\nAllocating a block 1: size: " << block_size1 << "\n";
     ASSERT_EQ(buddy_alloc_allocate(b_alloc, block_size1, &out_block1), 0);
 
-    block_t *out_block2;    
+    buddy_alloc_block_t *out_block2;    
     uint32_t block_size2 = KB_TO_BYTES(1);
     std:: cout << "\nAllocating a block 2: size: " << block_size2 << "\n";
     ASSERT_EQ(buddy_alloc_allocate(b_alloc, block_size2, &out_block2), 0);
@@ -90,17 +90,17 @@ TEST_F(buddy_allocator_test, alloc_free_sanity) {
     std:: cout << "\nfreeing block 1: size: " << block_size1 << "\n";
     ASSERT_EQ(buddy_alloc_free(b_alloc, out_block1), 0);
 
-    block_t *out_block3;    
+    buddy_alloc_block_t *out_block3;    
     uint32_t block_size3 = KB_TO_BYTES(2);    
     std:: cout << "\nAllocating a block 3: size: " << block_size3 << "\n";
     ASSERT_EQ(buddy_alloc_allocate(b_alloc, block_size3, &out_block3), 0);
 
-    block_t *out_block4;    
+    buddy_alloc_block_t *out_block4;    
     uint32_t block_size4 = 512;    
     std:: cout << "\nAllocating a block 4: size: " << block_size4 << "\n";
     ASSERT_EQ(buddy_alloc_allocate(b_alloc, block_size4, &out_block4), 0);
 
-    block_t *out_block5;    
+    buddy_alloc_block_t *out_block5;    
     uint32_t block_size5 = KB_TO_BYTES(1);
     std:: cout << "\nAllocating a block 5: size: " << block_size5 << "\n";
     ASSERT_NE(buddy_alloc_allocate(b_alloc, block_size5, &out_block5), 0);
@@ -123,7 +123,7 @@ TEST_F(buddy_allocator_test, alloc_free_sanity) {
 }
 
 TEST_F(buddy_allocator_test, simple_allocate_and_free) {
-    block_t *out_block;    
+    buddy_alloc_block_t *out_block;    
     uint32_t block_size = 512;
     uint32_t block_level;
     uint32_t free_blocks_count;
@@ -162,39 +162,4 @@ TEST_F(buddy_allocator_test, simple_allocate_and_free) {
     EXPECT_EQ(free_blocks_count, 1);    
 }
 
-
-/*
-TEST_F(buddy_allocator_test, buddy_allocator_double_free) {
-
-    /*
-        //////////////DOUBLE FREE BUG//////////////////////
-
-        1. Allocate block at offset 0, size 8KB → Level 3
-        2. Free the block
-        3. It merges upward until level 0.
-        4. Free list at level 0 now has offset 0.
-        5. Now you free the same block again:
-        6. You calculate next_pow2(size) → 8KB → Level 3.
-        7. Check free list at level 3 → empty, So loop exits immediately, and you: linked_list_add_block_as_head(b_alloc, level 3, offset 0);
-
-        Now you have:
-            -One block at level 0 with offset 0.
-            -One block at level 3 with offset 0.
-
-        * No solution yet (future solution can be adding a bit field to track used or free blocks)        
-    */
-    /*
-    uint32_t block_size1 = KB_TO_BYTES(8);
-    block_t *out_block1;
-    std:: cout << "\nAllocating a block 1: size: " << block_size1 << "\n";
-    ASSERT_EQ(buddy_alloc_allocate(b_alloc, block_size1, &out_block1), 0);
-
-    std:: cout << "\nfreeing block 1: size: " << block_size1 << "\n";
-    ASSERT_EQ(buddy_alloc_free(b_alloc, out_block1), 0);
-
-    std:: cout << "\ntry to free block 1 again: size: " << block_size1 << "\n";
-    ASSERT_NE(buddy_alloc_free(b_alloc, out_block1), 0);
-}
-
-*/
 
