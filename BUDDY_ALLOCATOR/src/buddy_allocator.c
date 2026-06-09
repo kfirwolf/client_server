@@ -29,12 +29,13 @@ typedef struct {
 } mem_pool_cfg_t;
 
 struct buddy_alloc_block {
-    struct buddy_alloc_block *next;
-    struct buddy_alloc_block *prev; //prev pointer for future use if we want to change the linked list to double linked list (to optimize the remove block from free list operation) and avoid the needs to traverse the list to find the previous block when we want to remove a block from the free list
-    uint32_t offset; //offset in bytes from the start of the pool (the offset will be used to calculate the block address by adding it to the base address of the pool, and also to calculate the buddy offset)
-    uint32_t level : 6; //Instead of size will use level instead (we allocated only 6 bits for level and the rest will go to the new index we wanted to add will be what left)
-    uint32_t is_active : 1; //this bit will indicate if the block is currently allocated or free, this will help us to know if we can merge it with its buddy when we free it (if buddy is free and this block is free we can merge them, if buddy is free but this block is active (allocated) we can't merge them and we will add this block to the free list as it is)
-    uint32_t reserved : 25; //reserved bits for future use (if we want to add more info to the block struct, we can use these bits without the needs to change the struct size and break the API)
+    struct buddy_alloc_block *next; 
+    struct buddy_alloc_block *prev; // we can add prev pointer to the block struct to make the linked list operations more efficient (removing a block from the middle of the list will be O(1) instead of O(n) with only next pointer)
+    uint32_t offset; // the offset of the block in the memory pool (relative to the start of the pool), used to calculate buddy offset and block size
+    uint32_t level : 6; // block's level in the buddy tree, used to derive block size and slot index
+    uint32_t is_active : 1; // true if this slot contains a valid block object, false if the slot is empty (e.g. after a merge)
+    uint32_t is_allocated : 1; // true if the block is currently allocated to the user, false if it's in the free list.
+    uint32_t reserved : 24; // reserved bits for future use (if we want to add more info to the block struct, we can use these bits without the needs to change the struct size and break the API)
 };
 
 struct buddy_free_list {
@@ -127,6 +128,12 @@ static int get_block_level(const buddy_alloc_t *b_alloc, uint32_t block_size, ui
     return 0;
 }
 
+static inline uint32_t calc_buddy_allocator_slot(uint32_t offset, uint32_t block_level, uint32_t block_size) {
+
+    return (((1U << block_level) -1U) + (uint32_t)(offset/block_size)); 
+
+}
+
 //////////////////////////////// INTERNAL MEM POOL API ///////////////////////////////////////////////////////////////
 
 int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
@@ -163,72 +170,29 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
 
 int mem_pool_destroy(mem_pool_t *pool) {
 
-    int rc = 0;
-
     if (pool == NULL) {
         return -EINVAL;
-    }
-
-    rc = id_pool_destroy(pool->id_pool);
-    if (rc != 0) {
-        return rc;
     }
 
     free(pool->elements_array);
     free(pool);
     return 0;
-
 }
 
-int mem_pool_allocate(mem_pool_t *pool, void **ptr) {
+int mem_pool_allocate(mem_pool_t *pool, void **ptr, uint32_t slot_index) {
 
-    int rc = 0;
-    uint32_t mem_pool_idx;
-
-    if (pool == NULL || ptr == NULL) {
+    if (pool == NULL || ptr == NULL || slot_index >= pool->num_of_elements) {
         return -EINVAL;
     }
 
-    rc = id_pool_allocate(pool->id_pool, &mem_pool_idx);
-
-    if (rc != 0) {
-        NET_INFRA_LOG(LOG_ERROR, "Failed to allocate new element");
-        return rc;
-    }
-
-    *ptr = (void *)((char *)pool->elements_array + (mem_pool_idx * pool->size_of_element));
-
-    return 0;
-}
-
-int mem_pool_free(mem_pool_t *pool, void *ptr) {
-    int rc = 0;
-    uint32_t id_pool_index;
-    if (pool == NULL || ptr == NULL) {
-        return -EINVAL;
-    }
-
-    char *base = (char *)pool->elements_array;
-    ptrdiff_t offset_bytes = (char *)ptr - base;
-
-    if (pool->size_of_element == 0 || (offset_bytes < 0) || (offset_bytes % pool->size_of_element) != 0 || (offset_bytes / pool->size_of_element) >= pool->num_of_elements) {
-        return -EINVAL;
-    }
-
-    id_pool_index = (uint32_t)(offset_bytes/pool->size_of_element);
-
-    rc = id_pool_free(pool->id_pool, id_pool_index);
-
-    if (rc != 0) {
-        return rc;
-    }
+    *ptr = (void *)((char *)pool->elements_array + (slot_index * pool->size_of_element));
 
     return 0;
 }
 
 //////////////////////////////// INTERNAL LINKED LIST API //////////////////////////////////////////////////////////////
 
-static int create_new_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t offset, struct buddy_alloc_block **out_block) {
+static int create_new_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t offset, uint32_t block_size, struct buddy_alloc_block **out_block) {
     int rc = 0;
     struct buddy_alloc_block *free_block;
 
@@ -236,7 +200,9 @@ static int create_new_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t off
         return -EINVAL;
     }
 
-    rc = mem_pool_allocate(b_alloc->mem_pool, (void **)&free_block);
+    uint32_t slot_index = calc_buddy_allocator_slot(offset, level, block_size);
+
+    rc = mem_pool_allocate(b_alloc->mem_pool, (void **)&free_block, slot_index);
     if (unlikely(rc != 0)) {
         NET_INFRA_LOG(LOG_ERROR, "Failed to allocate new block");
         return rc;
@@ -244,7 +210,10 @@ static int create_new_block(buddy_alloc_t *b_alloc, uint32_t level, uint32_t off
 
     free_block->level = level;
     free_block->next = NULL;
+    free_block->prev = NULL;
     free_block->offset = offset;
+    free_block->is_active = true;
+    free_block->is_allocated = false;
     *out_block = free_block;
     return 0;
 }
@@ -256,7 +225,12 @@ static int linked_list_add_block(buddy_alloc_t *b_alloc, struct buddy_alloc_bloc
         return -EINVAL;
     }
 
+    if (unlikely(b_alloc->free_list[input_block->level].head != NULL)) {
+        b_alloc->free_list[input_block->level].head->prev = input_block;
+    }
+    
     input_block->next = b_alloc->free_list[input_block->level].head;
+    input_block->prev = NULL;
     b_alloc->free_list[input_block->level].head = input_block;
 
     return 0;
@@ -527,7 +501,7 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_alloc_t **b_alloc) {
     b_allocator->num_of_levels = num_of_levels;
 
     //setting first (largest block) level linked list
-    rc = create_new_block(b_allocator, 0, 0, &blk);
+    rc = create_new_block(b_allocator, 0, 0, total_mem_pool, &blk);
     if (unlikely(rc != 0)) {
         goto fail;
     }
@@ -557,7 +531,7 @@ int buddy_alloc_destroy(buddy_alloc_t *b_alloc) {
         return -EINVAL;
     }
 
-    //Tear down the mem pool , insiede ID‐pool we used for node indices and mem block we allocated for the blocks 
+    //Tear down the mem pool
     rc = mem_pool_destroy(b_alloc->mem_pool);
 
     if (unlikely(rc != 0)) {
