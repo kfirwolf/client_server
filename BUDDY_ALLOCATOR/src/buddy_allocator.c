@@ -18,7 +18,6 @@
 #define MAX_LEVELS 64
 
 typedef struct {
-    id_pool_t *id_pool;
     void *elements_array;
     uint32_t num_of_elements;
     uint32_t size_of_element;
@@ -31,9 +30,11 @@ typedef struct {
 
 struct buddy_alloc_block {
     struct buddy_alloc_block *next;
-    uint32_t offset;
+    struct buddy_alloc_block *prev; //prev pointer for future use if we want to change the linked list to double linked list (to optimize the remove block from free list operation) and avoid the needs to traverse the list to find the previous block when we want to remove a block from the free list
+    uint32_t offset; //offset in bytes from the start of the pool (the offset will be used to calculate the block address by adding it to the base address of the pool, and also to calculate the buddy offset)
     uint32_t level : 6; //Instead of size will use level instead (we allocated only 6 bits for level and the rest will go to the new index we wanted to add will be what left)
-    uint32_t block_id : 26;
+    uint32_t is_active : 1; //this bit will indicate if the block is currently allocated or free, this will help us to know if we can merge it with its buddy when we free it (if buddy is free and this block is free we can merge them, if buddy is free but this block is active (allocated) we can't merge them and we will add this block to the free list as it is)
+    uint32_t reserved : 25; //reserved bits for future use (if we want to add more info to the block struct, we can use these bits without the needs to change the struct size and break the API)
 };
 
 struct buddy_free_list {
@@ -126,12 +127,15 @@ static int get_block_level(const buddy_alloc_t *b_alloc, uint32_t block_size, ui
     return 0;
 }
 
+static inline uint32_t calc_buddy_allocator_slot(uint32_t offset, uint32_t block_level, uint32_t block_size) {
+
+    return (((1U << block_level) -1U) + (uint32_t)(offset/block_size)); 
+
+}
+
 //////////////////////////////// INTERNAL MEM POOL API ///////////////////////////////////////////////////////////////
 
 int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
-
-    int rc = 0;
-    id_pool_cfg_t cfg;
 
     if (pool == NULL || mem_pool_cfg  == NULL) {
         NET_INFRA_LOG(LOG_ERROR, "Node pool invalid values");
@@ -149,9 +153,8 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
     }
 
     (*pool)->elements_array = (void *)calloc(mem_pool_cfg->num_elements, mem_pool_cfg->element_size);
-    mem_pool_t *memory_pool = (mem_pool_t *)(*pool)->elements_array;
 
-    if (unlikely(memory_pool == NULL)) {
+    if (unlikely((*pool)->elements_array == NULL)) {
         free(*pool);
         NET_INFRA_LOG(LOG_ERROR, "Node pool memory allocation failed");
         return -ENOMEM;
@@ -160,84 +163,28 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
     (*pool)->num_of_elements = mem_pool_cfg->num_elements;
     (*pool)->size_of_element = mem_pool_cfg->element_size;
 
-    //setting id pool
-    cfg.capacity = (*pool)->num_of_elements;
-    cfg.id_start_offset = 0;
-
-    rc = id_pool_create(&((*pool)->id_pool), &cfg);
-
-    if (unlikely(rc != 0)) {
-        NET_INFRA_LOG(LOG_ERROR, "Error while creating maximum nodes pool.");
-        free((*pool)->elements_array);
-        free(*pool);
-        return rc;
-    }
-
     NET_INFRA_LOG(LOG_DEBUG, "Finished mem_pool_create.");
     return 0;
 }
 
 int mem_pool_destroy(mem_pool_t *pool) {
 
-    int rc = 0;
-
     if (pool == NULL) {
         return -EINVAL;
-    }
-
-    rc = id_pool_destroy(pool->id_pool);
-    if (rc != 0) {
-        return rc;
     }
 
     free(pool->elements_array);
     free(pool);
     return 0;
-
 }
 
-int mem_pool_allocate(mem_pool_t *pool, void **ptr) {
+int mem_pool_allocate(mem_pool_t *pool, void **ptr, uint32_t slot_index) {
 
-    int rc = 0;
-    uint32_t mem_pool_idx;
-
-    if (pool == NULL || ptr == NULL) {
+    if (pool == NULL || ptr == NULL || slot_index >= pool->num_of_elements) {
         return -EINVAL;
     }
 
-    rc = id_pool_allocate(pool->id_pool, &mem_pool_idx);
-
-    if (rc != 0) {
-        NET_INFRA_LOG(LOG_ERROR, "Failed to allocate new element");
-        return rc;
-    }
-
-    *ptr = (void *)((char *)pool->elements_array + (mem_pool_idx * pool->size_of_element));
-
-    return 0;
-}
-
-int mem_pool_free(mem_pool_t *pool, void *ptr) {
-    int rc = 0;
-    uint32_t id_pool_index;
-    if (pool == NULL || ptr == NULL) {
-        return -EINVAL;
-    }
-
-    char *base = (char *)pool->elements_array;
-    ptrdiff_t offset_bytes = (char *)ptr - base;
-
-    if (pool->size_of_element == 0 || (offset_bytes < 0) || (offset_bytes % pool->size_of_element) != 0 || (offset_bytes / pool->size_of_element) >= pool->num_of_elements) {
-        return -EINVAL;
-    }
-
-    id_pool_index = (uint32_t)(offset_bytes/pool->size_of_element);
-
-    rc = id_pool_free(pool->id_pool, id_pool_index);
-
-    if (rc != 0) {
-        return rc;
-    }
+    *ptr = (void *)((char *)pool->elements_array + (slot_index * pool->size_of_element));
 
     return 0;
 }
@@ -474,7 +421,6 @@ int buddy_alloc_create(buddy_alloc_cfg_t *b_cfg, buddy_alloc_t **b_alloc) {
     buddy_alloc_t *b_allocator = NULL;
     mem_pool_cfg_t mem_pool_cfg;
     struct buddy_alloc_block *blk;
-
 
     if (unlikely(b_alloc == NULL || b_cfg == NULL)) {
         NET_INFRA_LOG(LOG_ERROR, "NULL input args");
