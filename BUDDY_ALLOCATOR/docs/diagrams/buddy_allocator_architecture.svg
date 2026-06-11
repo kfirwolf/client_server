@@ -59,9 +59,9 @@
   <line x1="620" y1="408" x2="620" y2="508" stroke="#B4B2A9" stroke-width="0.5"/>
 
   <text x="120" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">offset</text>
-  <text x="270" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">level : 6</text>
-  <text x="410" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">is_active : 1</text>
-  <text x="550" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">is_allocated : 1</text>
+  <text x="270" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">level : 6 bits</text>
+  <text x="410" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">is_active : 1 bit</text>
+  <text x="550" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">is_allocated : 1 bit</text>
   <text x="730" y="432" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="500" fill="#2C2C2A">next · prev</text>
 
   <text x="120" y="460" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#5F5E5A">pool-relative</text>
