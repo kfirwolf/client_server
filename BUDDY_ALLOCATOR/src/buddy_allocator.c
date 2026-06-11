@@ -261,20 +261,6 @@ static int linked_list_extract_block(buddy_alloc_t *b_alloc, struct buddy_alloc_
 
 //////////////////////////////// INTERNAL BUDDY ALLOCATOR API //////////////////////////////////////////////////////////
 
-static int check_buddy_validity(const buddy_alloc_t *b_alloc, const struct buddy_alloc_block *block) {
-
-    if (block == NULL || b_alloc == NULL) {
-        return -EINVAL;
-    }
-
-    if (block->level >= b_alloc->num_of_levels) {
-        NET_INFRA_LOG(LOG_ERROR, "block->level > max level (offset=%u)", block->offset);
-        return -EINVAL;
-    }
-
-    return 0;
-}
-
 static int remove_buddy_block(buddy_alloc_t *b_alloc, const uint32_t *offset, int *level, const uint32_t *block_size, uint32_t *buddy_offset, bool *found_buddy) {
     int rc = 0;
     *found_buddy = false;
