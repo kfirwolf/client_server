@@ -84,7 +84,7 @@ legitimately free block.
 
 | Operation | Complexity |
 |---|---|
-| `buddy_alloc_allocate` | O(log N) — at most one pass up the levels to find a free block, then split down |
+| `buddy_alloc_allocate` | O(log N) — at most one pass upward through the levels to find a non-empty free list, then one pass downward splitting blocks to the target level. Both passes are bounded by num_of_levels. |
 | `buddy_alloc_free` | O(log N) — at most one pass up the levels merging with buddies |
 | buddy lookup during free | O(1) — direct slot computation, no list scan |
 | buddy removal from free list | O(1) — doubly linked list unlink |
