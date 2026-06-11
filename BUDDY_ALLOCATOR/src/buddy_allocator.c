@@ -268,7 +268,7 @@ static int remove_buddy_block(buddy_alloc_t *b_alloc, const uint32_t *offset, in
     
     uint32_t buddy_slot = calc_buddy_allocator_slot(*buddy_offset, *level, *block_size);
     struct buddy_alloc_block *buddy_block;
-    rc = mem_pool_get_block(b_alloc->mem_pool, &buddy_block, buddy_slot);
+    rc = mem_pool_get_block(b_alloc->mem_pool, (void **)&buddy_block, buddy_slot);
 
     if (unlikely(rc != 0)) {
         return rc;            
