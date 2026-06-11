@@ -89,7 +89,9 @@ legitimately free block.
 | buddy lookup during free | O(1) — direct slot computation, no list scan |
 | buddy removal from free list | O(1) — doubly linked list unlink |
 
-N = number of levels = log2(total_size / min_block_size) + 1
+N = total_size / min_block_size  (max number of concurrently allocated blocks)
+num_of_levels = log2(N) + 1
+complexity = O(log N) (which is O(num_of_levels))
 
 ---
 
