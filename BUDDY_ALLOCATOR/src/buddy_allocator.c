@@ -135,7 +135,7 @@ static inline uint32_t calc_buddy_allocator_slot(uint32_t offset, uint32_t block
 
 //////////////////////////////// INTERNAL MEM POOL API ///////////////////////////////////////////////////////////////
 
-int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
+static int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
 
     if (pool == NULL || mem_pool_cfg  == NULL) {
         NET_INFRA_LOG(LOG_ERROR, "Node pool invalid values");
@@ -148,7 +148,7 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
     }
 
     *pool = calloc(1, sizeof(mem_pool_t));
-    if (*pool == NULL) {
+    if (unlikely(*pool == NULL)) {
         return -ENOMEM;
     }
 
@@ -167,7 +167,7 @@ int mem_pool_create(mem_pool_t **pool, mem_pool_cfg_t *mem_pool_cfg) {
     return 0;
 }
 
-int mem_pool_destroy(mem_pool_t *pool) {
+static int mem_pool_destroy(mem_pool_t *pool) {
 
     if (pool == NULL) {
         return -EINVAL;
@@ -178,7 +178,7 @@ int mem_pool_destroy(mem_pool_t *pool) {
     return 0;
 }
 
-int mem_pool_get_block(const mem_pool_t *pool, void **ptr, const uint32_t slot_index) {
+static int mem_pool_get_block(const mem_pool_t *pool, void **ptr, const uint32_t slot_index) {
 
     if (pool == NULL || ptr == NULL || slot_index >= pool->num_of_elements) {
         return -EINVAL;

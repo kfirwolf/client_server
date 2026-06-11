@@ -95,6 +95,35 @@ complexity = O(log N) (which is O(num_of_levels))
 
 ---
 
+### `buddy_alloc_allocate` algorithm
+
+1. Round up `block_size` to the next power of 2
+2. Compute `target_level` from the rounded size
+3. Check the free list at `target_level` — if non-empty, take the head block, mark `is_allocated = true`, return it
+4. If empty, search upward (toward level 0) for the first non-empty free list
+5. If no free block exists at any level, return `-ENOMEM`
+6. Take the head block at the found level, remove it from the free list, mark its slot `is_active = false`
+7. Split downward: for each level from `found_level + 1` to `target_level`, create only the buddy block
+   at the new level (the block at `block_offset` is not created at intermediate levels — it continues
+   splitting down to the next level), set `is_active = true`, add the buddy to that level's free list
+8. Create the target block at `target_level` with the correct offset, set `is_active = true`,
+   `is_allocated = true`, return it
+
+---
+
+### `buddy_alloc_free` algorithm
+
+1. Set the block's `is_active = false`
+2. Compute `buddy_offset = offset XOR block_size`
+3. Compute `buddy_slot` using the slot formula, get `buddy_block*` directly from the pool — O(1)
+4. Check if buddy is free: `buddy_block->is_active == true && buddy_block->is_allocated == false`
+5. If buddy is not free — create a new block at `(current_level, block_offset)`, set `is_active = true`,
+   `is_allocated = false`, add to free list, stop
+6. If buddy is free — remove buddy from free list (O(1) via `prev`/`next`), set `buddy_block->is_active = false`
+7. Update: `block_size <<= 1`, `block_offset = MIN(block_offset, buddy_offset)`, `current_level--`
+8. Repeat from step 2 until level 0 or no free buddy found
+9. Create the final merged block, add to free list
+
 ## Public API
 
 ```c
