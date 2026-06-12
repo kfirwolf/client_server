@@ -34,6 +34,13 @@ jobs:
           make
           ctest --output-on-failure
 
+      - name: Build and run BUDDY_ALLOCATOR tests
+        run: |
+          mkdir -p BUDDY_ALLOCATOR/build && cd BUDDY_ALLOCATOR/build
+          cmake ..
+          make
+          ctest --output-on-failure      
+
       - name: Build and run INFRA tests
         run: |
           mkdir -p INFRA/build && cd INFRA/build
